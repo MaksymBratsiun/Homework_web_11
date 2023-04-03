@@ -10,7 +10,7 @@ from src.schemas import ContactResponse, ContactModel
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
 
-@router.get("/", response_model=List[ContactResponse], name="Return contacts")
+@router.get("/", response_model=List[ContactResponse], name="Get contacts")
 async def get_contacts(db: Session = Depends(get_db)):
     contacts = db.query(Contact).all()
     return contacts
@@ -19,7 +19,7 @@ async def get_contacts(db: Session = Depends(get_db)):
 @router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
 async def create_contact(body: ContactModel, db: Session = Depends(get_db)):
     contact = db.query(Contact).filter_by(email=body.email).first()
-    if contact is None:
+    if contact is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is exists")
     contact = Contact(**body.dict())
     db.add(contact)
