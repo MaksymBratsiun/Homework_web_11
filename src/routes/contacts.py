@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import Depends, HTTPException, status, Path, APIRouter
@@ -59,3 +60,47 @@ async def remove_contact_by_id(contact_id: int = Path(ge=1), db: Session = Depen
     db.delete(contact)
     db.commit()
     return contact
+
+
+@router.get("/search/{find_item}",
+            response_model=List[ContactResponse],
+            name="Find contact by first_name, last_name, email")
+async def get_search(find_item: str, db: Session = Depends(get_db)):
+    result = []
+    if find_item:
+        contacts_f_name = db.query(Contact).filter(Contact.first_name.like(f'%{find_item}%')).all()
+        if contacts_f_name:
+            result.extend(contacts_f_name)
+        contacts_l_name = db.query(Contact).filter(Contact.last_name.like(f'%{find_item}%')).all()
+        if contacts_l_name:
+            result.extend(contacts_l_name)
+        contacts_email = db.query(Contact).filter(Contact.email.like(f'%{find_item}%')).all()
+        if contacts_email:
+            result.extend(contacts_email)
+        result = list(set(result))
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return result
+
+
+@router.get("/birthday/", response_model=List[ContactResponse], name="Birthday in 7 days")
+async def birthday_7(db: Session = Depends(get_db)):
+    contacts = db.query(Contact).all()
+    result = []
+    today = datetime.now()
+    for contact in contacts:
+        if contact.born_date.month > today.month:
+            contact_birthday = datetime(year=today.year, month=contact.born_date.month, day=contact.born_date.day)
+        elif contact.born_date.month < today.month:
+            contact_birthday = datetime(year=today.year+1, month=contact.born_date.month, day=contact.born_date.day)
+        else:
+            if contact.born_date.day > today.day:
+                contact_birthday = datetime(year=today.year, month=contact.born_date.month, day=contact.born_date.day)
+            else:
+                contact_birthday = datetime(year=today.year+1, month=contact.born_date.month, day=contact.born_date.day)
+        delta = contact_birthday - today
+        if delta <= timedelta(days=7):
+            result.append(contact)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return result

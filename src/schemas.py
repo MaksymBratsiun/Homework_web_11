@@ -19,8 +19,8 @@ class ContactResponse(BaseModel):
     phone: str = None
     born_date: datetime = None
     add_data: str = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
 
     class Config:
         orm_mode = True
